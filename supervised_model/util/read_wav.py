@@ -1,5 +1,6 @@
 import numpy as np
 import wave
+from typing import Tuple
 
 def get_train_path(type: str) -> str:
     if type == "good":
@@ -33,4 +34,3 @@ def read_wav_with_sr(file_as_path: str) -> Tuple[np.ndarray, int]:
         frames = wav_file.readframes(wav_file.getnframes())
         audio_array = np.frombuffer(frames, dtype=np.int16)
     return audio_array, sr
-
