@@ -1,3 +1,9 @@
-import util.read_wav as read_wav 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))     # Evil python environment hack >:)
 
-print(read_wav.process_all(read_wav.get_training_data()))
+import util.read_wav as read
+import util.preprocessing as process
+
+print(read.process_wav_files(read.get_training_data()))
+process.reduce_noise()
