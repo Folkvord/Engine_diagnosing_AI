@@ -22,12 +22,6 @@ def get_test_path(type: str) -> str:
     else:
         return ""
 
-def read_wav(file_as_path: str) -> np.ndarray:
-    with wave.open(file_as_path) as wav_file:
-        frames = wav_file.readframes(wav_file.getnframes())
-        audio_array = np.frombuffer(frames, dtype=np.int16)
-    return audio_array
-
 def read_wav_with_sr(file_as_path: str) -> Tuple[np.ndarray, int]:
     with wave.open(file_as_path) as wav_file:
         sr = wav_file.getframerate()
