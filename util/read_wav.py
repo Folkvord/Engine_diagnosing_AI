@@ -4,24 +4,50 @@ import glob
 import wave
 
 
-def get_training_data() -> tuple:
-    data = glob.glob("data/train_cut/*/*.wav")
-    return data
+# Returns a tuple of processable numpy arrays made from specified wav-files 
+# is_train: bool specifying wether to get training- or test-data
+# data_type: "all" processes all types of data
+#            "good", "broken", "heavy load" processes this type
+def get_formated_wav(data_type: str, is_train: bool):
+    data = get_data(data_type, is_train);
+    return process_wav_files(data)
 
-def get_test_data() -> tuple:
-    data = glob.glob("data/test_cut/*/*.wav")
-    return data
 
+# Returns a tuple of all cut wav-files of a spesified type
+# is_train: bool specifying wether to get training- or test-data
+# data_type: "all" processes all types of data
+#            "good", "broken", "heavy load" processes this type
+def get_data(type: str, is_train: bool) -> tuple:
+    path = "data/train_cut/" if is_train else "data/test_cut/"
+    if type == "all":
+        path += "*/*.wav"
+    elif type == "good":
+        path += "engine1_good/*.wav"
+    elif type == "broken":
+        path += "engine2_broken/*.wav"
+    elif type == "heavy load":
+        path += "engine3_heavyload/*.wav"
+    else:
+        raise("BAD DATA TYPE GIVEN")
+    
+    data = glob.glob(path)
+    return tuple(data)
+
+
+# Takes a list of wav-files and turns them into processable arrays
 def process_wav_files(data: tuple) -> tuple:
     processed_data = []
     for wav_file in data:
-        processed_data.append(read_wav_with_sr(wav_file))
+        processed_wav = read_wav_with_sr(wav_file)
+        processed_data.append(processed_wav)
     return tuple(processed_data)
 
 
+# Takes one wav-file and processes it into processable arrays and
 def read_wav_with_sr(file_as_path: str) -> Tuple[np.ndarray, int]:
     with wave.open(file_as_path) as wav_file:
         sr = wav_file.getframerate()
         frames = wav_file.readframes(wav_file.getnframes())
         audio_array = np.frombuffer(frames, dtype=np.int16)
-    return audio_array, sr
+    return (audio_array, sr)
+
