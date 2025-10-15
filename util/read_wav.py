@@ -38,16 +38,16 @@ def get_data(type: str, is_train: bool) -> tuple:
 def process_wav_files(data: tuple) -> tuple:
     processed_data = []
     for wav_file in data:
-        processed_wav = read_wav_with_sr(wav_file)
+        processed_wav = read_wav_with_sample_rate(wav_file)
         processed_data.append(processed_wav)
     return tuple(processed_data)
 
 
-# Takes one wav-file and processes it into processable arrays and
-def read_wav_with_sr(file_as_path: str) -> Tuple[np.ndarray, int]:
+# Takes one wav-file and processes it into processable arrays and sample_rate
+def read_wav_with_sample_rate(file_as_path: str) -> Tuple[np.ndarray, int]:
     with wave.open(file_as_path) as wav_file:
-        sr = wav_file.getframerate()
+        sample_rate = wav_file.getframerate()
         frames = wav_file.readframes(wav_file.getnframes())
         audio_array = np.frombuffer(frames, dtype=np.int16)
-    return (audio_array, sr)
+    return (audio_array, sample_rate)
 
