@@ -1,14 +1,14 @@
 import numpy as np
 import librosa
 
-def reduce_noise(y: np.ndarray, sample_rate: int, noise_duration=0.5, prop_decrease=0.9) -> np.ndarray:
+def reduce_noise(audio_array: np.ndarray, sample_rate: int, noise_duration=0.5, prop_decrease=0.9) -> np.ndarray:
     
     # 1. Estimer støyprofil fra starten (f.eks. 0.5 sek)
     n_noise = int(noise_duration * sample_rate)
-    noise_clip = y[:n_noise]
+    noise_clip = audio_array[:n_noise]
 
     # 2. Beregn STFT (frekvensrepresentasjon)
-    S_full, phase = librosa.magphase(librosa.stft(y))
+    S_full, phase = librosa.magphase(librosa.stft(audio_array))
     S_noise, _ = librosa.magphase(librosa.stft(noise_clip))
 
     # 3. Beregn gjennomsnittlig støyenergi per frekvens
