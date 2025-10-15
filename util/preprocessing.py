@@ -1,11 +1,13 @@
 import numpy as np
 import librosa
+import time
 
 """
     Preprocessing functions for preprocessing data with functions
     - Written by Edwina Larsen, Sofie <velg et etternavn>, Fredrik Bjune & Kristoffer Folkvord 
 """
 
+# Reduces the noise in a singular dataentry 
 def reduce_noise(audio_array: np.ndarray, sample_rate: int, noise_duration=0.5, prop_decrease=0.9) -> np.ndarray:
     
     # 1. Estimer støyprofil fra starten (f.eks. 0.5 sek)
@@ -34,9 +36,13 @@ def reduce_noise(audio_array: np.ndarray, sample_rate: int, noise_duration=0.5, 
 # Processes an array of dataentries
 def preprocess_data(data: tuple) -> np.ndarray:
     processed_data = []
+    start = time.time()
     for i in range(len(data)):
         audio_array = data[i][0]
         sample_rate = data[i][1]
         processed_entry = reduce_noise(audio_array, sample_rate)
         processed_data.append(processed_entry)
-    return processed_data
+    end = time.time()
+    time_taken = end - start
+    print(f"[PREPROCESSOR]: Preprocessed {len(data)} entries in {time_taken:.2f} s.")
+    return np.array(processed_data)

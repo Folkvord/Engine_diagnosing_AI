@@ -35,6 +35,7 @@ def get_data(type: str, is_train: bool) -> tuple:
         raise("BAD DATA TYPE GIVEN")
     
     data = glob.glob(path)
+    print(f"[PREPROCESSOR]: Read {len(data)} files from: {path}")
     return tuple(data)
 
 
