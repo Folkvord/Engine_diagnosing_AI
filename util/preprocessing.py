@@ -34,13 +34,13 @@ def reduce_noise(audio_array: np.ndarray, sample_rate: int, noise_duration=0.5, 
 
 
 # Processes an array of dataentries
-def preprocess_data(data: tuple) -> np.ndarray:
+def preprocess_data(data: tuple, noise_duration=0.5, prop_decrease=0.5) -> np.ndarray:
     processed_data = []
     start = time.time()
     for i in range(len(data)):
         audio_array = data[i][0]
         sample_rate = data[i][1]
-        processed_entry = reduce_noise(audio_array, sample_rate)
+        processed_entry = reduce_noise(audio_array, sample_rate, noise_duration, prop_decrease)
         processed_data.append(processed_entry)
     end = time.time()
     time_taken = end - start
