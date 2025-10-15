@@ -5,5 +5,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 import util.read_wav as read
 import util.preprocessing as process
 
-print(read.process_wav_files(read.get_training_data()))
-process.reduce_noise()
+"""
+    This file will contain the K-means unsupervised model
+    - Written by Kristoffer Folkvord
+"""
+
+data = read.get_formated_wav(data_type="all", is_train=True)
+processed_data = process.preprocess_data(data)
+
+

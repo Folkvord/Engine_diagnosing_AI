@@ -3,6 +3,10 @@ import numpy as np
 import glob
 import wave
 
+"""
+    Reading wav-files; an expantion on the file downloaded from Canvas.
+    - Written by: Kristoffer Folkvord
+"""
 
 # Returns a tuple of processable numpy arrays made from specified wav-files 
 # is_train: bool specifying wether to get training- or test-data

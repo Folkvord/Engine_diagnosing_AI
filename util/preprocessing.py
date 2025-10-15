@@ -1,6 +1,11 @@
 import numpy as np
 import librosa
 
+"""
+    Preprocessing functions for preprocessing data with functions
+    - Written by Edwina Larsen, Sofie <velg et etternavn>, Fredrik Bjune & Kristoffer Folkvord 
+"""
+
 def reduce_noise(audio_array: np.ndarray, sample_rate: int, noise_duration=0.5, prop_decrease=0.9) -> np.ndarray:
     
     # 1. Estimer støyprofil fra starten (f.eks. 0.5 sek)
