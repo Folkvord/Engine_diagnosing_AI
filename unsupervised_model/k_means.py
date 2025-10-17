@@ -17,11 +17,8 @@ import util.preprocessing as process
 # Prints the prediction result
 def print_prediction_result(prediction):
     counter = Counter(prediction)
-    keys = counter.keys()
-    vals = counter.values()
-    for key, val in keys, vals:
+    for key, val in counter.items():
         print(f"CLUSTER {key}: {val}")
-
 
 # Model settings:
 N_CLUSTERS = 3
