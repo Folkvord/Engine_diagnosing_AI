@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
-import numpy as np
+from collections import Counter
 
 import util.read_wav as read
 import util.preprocessing as process
@@ -13,6 +13,15 @@ import util.preprocessing as process
     This file contains the K-means unsupervised model
     - Written by Kristoffer Folkvord
 """
+
+# Prints the prediction result
+def print_prediction_result(prediction):
+    counter = Counter(prediction)
+    keys = counter.keys()
+    vals = counter.values()
+    for key, val in keys, vals:
+        print(f"CLUSTER {key}: {val}")
+
 
 # Model settings:
 N_CLUSTERS = 3
@@ -31,7 +40,7 @@ processed_test_heavyload = process.preprocess_data(test_heavyload)
 
 # Train the model
 kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, random_state=0)
-kmeans_model.fit(processed_train_data)
+kmeans_model.fit_predict(processed_train_data)
 cluster_centres = kmeans_model.cluster_centers_
 cluster_labels = kmeans_model.labels_
 print(f"[K-MEANS MODEL]: Finished training with {kmeans_model.n_iter_} iterations.")
@@ -39,15 +48,18 @@ print(f"[K-MEANS MODEL]: Finished training with {kmeans_model.n_iter_} iteration
 # Test the shit out of it
 print(f"[K-MEANS MODEL]: Testing good motors...")
 predicted_good = kmeans_model.predict(processed_test_good)
-print(predicted_good)
+print("RESULTS FOR GOOD ENGINES:")
+print_prediction_result(predicted_good)
+print()
 
 print(f"[K-MEANS MODEL]: Testing broken motors...")
 predicted_broken = kmeans_model.predict(processed_test_broken)
-print(predicted_broken)
+print("RESULTS FOR BROKEN ENGINES:")
+print_prediction_result(predicted_broken)
+print()
 
 print(f"[K-MEANS MODEL]: Testing heavyload motors...")
 predicted_heavyload = kmeans_model.predict(processed_test_heavyload)
-print(predicted_heavyload)
-
-unique, counts = np.unique(predicted_heavyload, return_counts=True)
-print(dict(zip(unique, counts)))
+print("RESULTS FOR ENGINES UNDER HEAVY LOAD:")
+print_prediction_result(predicted_heavyload)
+print()
