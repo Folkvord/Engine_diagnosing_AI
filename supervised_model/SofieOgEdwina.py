@@ -1,2 +1,5 @@
-# tre klasser, good, broken og heavyload
-# alle de beskårede filene er 3 sek, 44.1 kHz
+
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))     # Evil python environment hack >:)
+
