@@ -13,7 +13,7 @@ import wave
 # data_type: "all" processes all types of data
 #            "good", "broken", "heavy load" processes this type
 def get_formated_wav(data_type: str, is_train: bool):
-    data = get_data(data_type, is_train);
+    data = get_data_files(data_type, is_train);
     return process_wav_files(data)
 
 
@@ -21,7 +21,7 @@ def get_formated_wav(data_type: str, is_train: bool):
 # is_train: bool specifying wether to get training- or test-data
 # data_type: "all" processes all types of data
 #            "good", "broken", "heavy load" processes this type
-def get_data(type: str, is_train: bool) -> tuple:
+def get_data_files(type: str, is_train: bool) -> tuple:
     path = "data/train_cut/" if is_train else "data/test_cut/"
     if type == "all":
         path += "*/*.wav"
