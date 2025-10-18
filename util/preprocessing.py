@@ -17,10 +17,10 @@ def preprocess_data(data: tuple, model_pipeline: str) -> np.ndarray:
     chosen_pipeline = None
     if(model_pipeline == "supervised"):
         chosen_pipeline = supervised_preprocess_pipeline
-    elif(model_pipeline == "unsupervsed"):
+    elif(model_pipeline == "unsupervised"):
         chosen_pipeline = unsupervised_preprocess_pipeline
     else:
-        raise("Bad pipeline chosen")
+        raise Exception("Bad pipeline chosen")
 
     for i in range(len(data)):
         audio_array = data[i][0]
