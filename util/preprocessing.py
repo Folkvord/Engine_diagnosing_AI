@@ -5,7 +5,7 @@ import time
 
 """
     Preprocessing functions for preprocessing data with functions
-    - Written by Edwina Larsen, Sofie <velg et etternavn>, Fredrik Bjune & Kristoffer Folkvord 
+    - Written by Edwina Larsen, Sofie Emmelin Weber, Fredrik Bjune & Kristoffer Folkvord 
 """
 
 # Reduces the noise in a singular dataentry 
@@ -135,3 +135,57 @@ def select_features(audio_array: np.ndarray, sample_rate: int):
     ])
 
     return packed_features
+
+# === Adaptere for modeller ===
+# Disse bruker vi fra modell-koden (CNN og K-means).
+# Ingen prints eller logging her.
+
+def make_vector_features(audio_array: np.ndarray, sample_rate: int) -> np.ndarray:
+    """
+    Lager 1D feature-vektor (for K-means / klassiske ML-metoder).
+    Wrapper bare preprocess_pipeline() og returnerer float32.
+    """
+    feats = preprocess_pipeline(audio_array, sample_rate)   # eksisterer allerede hos dere
+    feats = np.asarray(feats, dtype=np.float32)
+    if feats.ndim != 1:
+        raise ValueError(f"make_vector_features forventer 1D vektor, fikk shape {feats.shape}")
+    return feats
+
+
+def make_cnn_features(audio_array: np.ndarray,
+                      sample_rate: int,
+                      n_mels: int = 64,
+                      n_fft: int = 1024,
+                      hop_length: int = 256,
+                      fmin: int = 20,
+                      fmax: int = 8000,
+                      top_db: float = 80.0,
+                      lowpass_cutoff: int = 5000,
+                      use_noise_reduction: bool = True) -> np.ndarray:
+    """
+    Lager normalisert log-mel-spektrogram for CNN.
+    Returnerer [1, n_mels, T] (float32).
+    - Bruker deres normalize -> (valgfri) reduce_noise_v2 -> filter_outlying_freq
+    - Deretter mel -> dB -> standardisering per klipp
+    """
+
+    y = normalize(audio_array.astype(np.float32))
+    if use_noise_reduction:
+        y = reduce_noise_v2(y, sample_rate=sample_rate, noise_duration=0.5, prop_decrease=0.5)
+    y = filter_outlying_freq(y, sample_rate=sample_rate, cutoff_freq=min(fmax, lowpass_cutoff))
+
+    # 2) mel -> dB
+    S = librosa.feature.melspectrogram(
+        y=y, sr=sample_rate,
+        n_fft=n_fft, hop_length=hop_length,
+        n_mels=n_mels, fmin=fmin, fmax=fmax,
+        center=True, power=2.0, norm="slaney", htk=True
+    )
+    S_db = librosa.power_to_db(S, ref=np.max, top_db=top_db)
+
+    # 3) standardisering per klipp
+    mu, sd = S_db.mean(), S_db.std() + 1e-8
+    S_db = (S_db - mu) / sd
+
+    # [1, n_mels, T]
+    return S_db[np.newaxis, :, :].astype(np.float32)
