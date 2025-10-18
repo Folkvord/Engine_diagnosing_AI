@@ -21,6 +21,7 @@ def print_prediction_result(prediction):
         print(f"CLUSTER {key}: {val}")
 
 # Model settings:
+ALGORITHM = "elkan"
 N_CLUSTERS = 3
 MAX_ITER = 300
 
@@ -36,7 +37,7 @@ test_heavyload = read.get_formated_wav(data_type="heavy load", is_train=False)
 processed_test_heavyload = process.preprocess_data(test_heavyload)
 
 # Train the model
-kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, random_state=0)
+kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, algorithm=ALGORITHM, random_state=0)
 kmeans_model.fit_predict(processed_train_data)
 cluster_centres = kmeans_model.cluster_centers_
 cluster_labels = kmeans_model.labels_
