@@ -26,14 +26,14 @@ MAX_ITER = 300
 
 # Preprocess the data used
 train_data = read.get_formated_wav(data_type="all", is_train=True)
-processed_train_data = process.preprocess_data(train_data)
+processed_train_data = process.preprocess_data(train_data, "unsupervised")
 
 test_good = read.get_formated_wav(data_type="good", is_train=False)
-processed_test_good = process.preprocess_data(test_good)
+processed_test_good = process.preprocess_data(test_good, "unsupervised")
 test_broken = read.get_formated_wav(data_type="broken", is_train=False)
-processed_test_broken = process.preprocess_data(test_broken)
+processed_test_broken = process.preprocess_data(test_broken, "unsupervised")
 test_heavyload = read.get_formated_wav(data_type="heavy load", is_train=False)
-processed_test_heavyload = process.preprocess_data(test_heavyload)
+processed_test_heavyload = process.preprocess_data(test_heavyload, "unsupervised")
 
 # Train the model
 kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, random_state=0)
