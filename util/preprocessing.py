@@ -134,7 +134,7 @@ def make_vector_features(audio_array: np.ndarray, sample_rate: int) -> np.ndarra
     Lager 1D feature-vektor (for K-means / klassiske ML-metoder).
     Wrapper bare preprocess_pipeline() og returnerer float32.
     """
-    feats = preprocess_pipeline(audio_array, sample_rate)   # eksisterer allerede hos dere
+    feats = supervised_preprocess_pipeline(audio_array, sample_rate)   # eksisterer allerede hos dere
     feats = np.asarray(feats, dtype=np.float32)
     if feats.ndim != 1:
         raise ValueError(f"make_vector_features forventer 1D vektor, fikk shape {feats.shape}")
@@ -160,7 +160,7 @@ def make_cnn_features(audio_array: np.ndarray,
 
     y = normalize(audio_array.astype(np.float32))
     if use_noise_reduction:
-        y = reduce_noise_v2(y, sample_rate=sample_rate, noise_duration=0.5, prop_decrease=0.5)
+        y = reduce_noise(y, sample_rate=sample_rate, noise_duration=0.5, prop_decrease=0.5)
     y = filter_outlying_freq(y, sample_rate=sample_rate, cutoff_freq=min(fmax, lowpass_cutoff))
 
     # 2) mel -> dB
