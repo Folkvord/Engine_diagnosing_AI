@@ -32,7 +32,7 @@ def get_data_files(type: str, is_train: bool) -> tuple:
     elif type == "heavy load":
         path += "engine3_heavyload/*.wav"
     else:
-        raise("BAD DATA TYPE GIVEN")
+        raise Exception("BAD DATA TYPE GIVEN")
     
     data = glob.glob(path)
     print(f"[PREPROCESSOR]: Read {len(data)} files from: {path}")
