@@ -2,6 +2,7 @@ import numpy as np
 import librosa
 import time
 
+
 """
     Preprocessing functions for preprocessing data with functions
     - Written by Edwina Larsen, Sofie Emmelin Weber, Fredrik Bjune & Kristoffer Folkvord 
@@ -35,7 +36,31 @@ def preprocess_data(data: tuple, model_pipeline: str) -> np.ndarray:
 
 # The preprocessing pipeline
 def supervised_preprocess_pipeline(audio_array: np.ndarray, sample_rate: int):
-    pass
+
+    # 1) Normalize the waveform
+    norm_audio = normalize(audio_array.astype(np.float32))
+
+    # 2) Optional: reduce background noise
+    denoised_audio = reduce_noise(norm_audio, sample_rate)
+
+    # 3) Low-pass filter to remove high-frequency noise
+    filtered_audio = filter_outlying_freq(denoised_audio, sample_rate, cutoff_freq=5000)
+
+    # 4) Convert to log-mel features (CNN input)
+    cnn_features = make_cnn_features(
+        filtered_audio,
+        sample_rate,
+        n_mels=64,
+        n_fft=1024,
+        hop_length=256,
+        fmin=20,
+        fmax=8000,
+        top_db=80.0,
+        lowpass_cutoff=5000,
+        use_noise_reduction=False,  # already denoised above
+    )
+
+    return cnn_features
 
 
 # The preprocessing pipeline

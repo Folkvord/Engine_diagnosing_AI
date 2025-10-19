@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
+
 # === Lydparametre (må matche adapteren i util/preprocessing.py) ===
 SR       = 16000
 DURATION = 2.0
@@ -18,9 +19,9 @@ N_MELS   = 64
 CLASSES  = ("engine1_good", "engine2_broken", "engine3_heavyload")
 
 # === Adapter fra preprosesseringsfila (brukes for CNN-features) ===
-from util.preprocessing import make_cnn_features
-if not callable(make_cnn_features):
-    raise ImportError("Fant ikke make_cnn_features i util/preprocessing.py")
+from supervised_model.diagnose_data import supervised_preprocess_pipeline
+if not callable(supervised_preprocess_pipeline):
+    raise ImportError("Fant ikke supervised_preprocess_pipeline i supervised_model/diagnose_data.py")
 
 # === Reproduserbarhet ===
 def set_seed(seed=42):
@@ -112,7 +113,7 @@ class EngineDataset(Dataset):
         # fast lengde
         y = _random_crop_or_pad(y, self.target_len) if self.augment else _center_crop_or_pad(y, self.target_len)
         # features
-        feat = make_cnn_features(y, SR)              # [1, N_MELS, T]
+        feat = supervised_preprocess_pipeline(y, SR)              # [1, N_MELS, T]
         feat = np.asarray(feat, dtype=np.float32)
         if feat.ndim != 3 or feat.shape[0] != 1 or feat.shape[1] != N_MELS:
             raise ValueError(f"make_cnn_features returnerte {feat.shape}, forventet [1,{N_MELS},T]")
