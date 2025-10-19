@@ -1,5 +1,7 @@
 import os, sys, torch, librosa, soundfile as sf
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
@@ -96,7 +98,8 @@ def plot_confusion(cm, classes):
     plt.xlabel("Predicted")
     plt.ylabel("True")
     plt.tight_layout()
-    plt.show()
+    plt.savefig("confusion_matrix.png") #må save fig pga problemer med Tcl og Windows python 13.3
+    print("Saved confusion matrix as confusion_matrix.png")
 
 def test_model(model_path, data_root):
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"

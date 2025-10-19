@@ -193,24 +193,36 @@ def train(train_root, val_root,
     best_acc, bad, patience = 0.0, 0, 7
     save_path = Path(__file__).resolve().parents[1] / "engine_cnn_best.pt"
 
-    for _ in range(epochs):
+    for epoch in range(epochs):
         model.train()
+        running_loss = 0.0
         for xb, yb in train_loader:
             xb, yb = xb.to(device), yb.to(device)
             opt.zero_grad(set_to_none=True)
-            out = model(xb); loss = loss_fn(out, yb)
+            out = model(xb)
+            loss = loss_fn(out, yb)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
+            running_loss += loss.item() * xb.size(0)
 
-        _, val_acc = evaluate(model, val_loader, device)
+    # Evaluate after each epoch
+        val_loss, val_acc = evaluate(model, val_loader, device)
+        avg_train_loss = running_loss / len(train_loader.dataset)
+        print(f"Epoch {epoch+1}/{epochs} | Train loss: {avg_train_loss:.4f} | "
+            f"Val loss: {val_loss:.4f} | Val acc: {val_acc:.3f}")
+
+    # Early stopping logic
         if val_acc > best_acc:
             best_acc, bad = val_acc, 0
             torch.save({"model_state": model.state_dict(),
                         "class_names": class_names}, save_path)
         else:
             bad += 1
-            if bad >= patience: break
+            if bad >= patience:
+                print("Early stopping triggered.")
+                break
+
 
     # last beste weights tilbake
     if save_path.exists():
