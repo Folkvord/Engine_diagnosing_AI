@@ -1,7 +1,7 @@
-# supervised_model/SofieOgEdwina.py
-import os, random, sys
+# supervised_model/train_cnn.py
+import os, sys, random
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # for util/
 
 import numpy as np
@@ -11,21 +11,30 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
-# --- Lydparametre (må matche adapteren i util/preprocessing.py) ---
-SR = 16000
+# === Lydparametre (må matche adapteren i util/preprocessing.py) ===
+SR       = 16000
 DURATION = 2.0
-N_MELS = 64
+N_MELS   = 64
+CLASSES  = ("engine1_good", "engine2_broken", "engine3_heavyload")
 
-# --- Adapter fra prepro-fila (brukes for CNN-features) ---
+# === Adapter fra preprosesseringsfila (brukes for CNN-features) ===
 from util.preprocessing import make_cnn_features
 if not callable(make_cnn_features):
-    raise ImportError("make_cnn_features mangler i util/preprocessing.py")
+    raise ImportError("Fant ikke make_cnn_features i util/preprocessing.py")
 
-# --- Reproduserbarhet ---
+# === Reproduserbarhet ===
 def set_seed(seed=42):
     random.seed(seed); np.random.seed(seed)
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
 set_seed(42)
+
+# === Enhetsvalg (cuda -> mps -> cpu) ===
+def pick_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 # --------------------------
 # Hjelpefunksjoner
@@ -54,7 +63,7 @@ def _random_crop_or_pad(y: np.ndarray, target_len: int) -> np.ndarray:
     return y[start:start + target_len]
 
 def _spec_mask(x: torch.Tensor):
-    # liten SpecAugment (kun i train)
+    # enkel SpecAugment (kun i tren)
     f = x.shape[1]
     fmask = np.random.randint(0, max(1, f // 10))
     fstart = np.random.randint(0, max(1, f - fmask + 1))
@@ -66,12 +75,11 @@ def _spec_mask(x: torch.Tensor):
     return x
 
 # --------------------------
-# Dataset (bruker data/train og data/test)
+# Dataset
 # --------------------------
 class EngineDataset(Dataset):
     def __init__(self, root, split="train",
-                 class_names=("engine1_good", "engine2_broken", "engine3_heavyload"),
-                 augment=True, seed=42):
+                 class_names=CLASSES, augment=True, seed=42):
         super().__init__()
         assert split in ("train", "val")
         self.root = Path(root)
@@ -89,7 +97,7 @@ class EngineDataset(Dataset):
             files = [str(fp) for fp in p.iterdir()
                      if fp.is_file() and fp.suffix.lower() == ".wav"]
             if not files:
-                raise FileNotFoundError(f"Ingen WAV i {p} (forventer .wav/.WAV)")
+                raise FileNotFoundError(f"Ingen WAV i {p}")
             rng.shuffle(files)
             per_class[cname] = files
 
@@ -99,17 +107,15 @@ class EngineDataset(Dataset):
 
     def __getitem__(self, idx: int):
         path, label = self.items[idx]
+        # raskt og robust: librosa loader og resampler til SR
         y, _ = librosa.load(path, sr=SR, mono=True)
-
         # fast lengde
         y = _random_crop_or_pad(y, self.target_len) if self.augment else _center_crop_or_pad(y, self.target_len)
-
-        # CNN-features fra adapteren
-        feat = make_cnn_features(y, SR)            # [1, N_MELS, T]
+        # features
+        feat = make_cnn_features(y, SR)              # [1, N_MELS, T]
         feat = np.asarray(feat, dtype=np.float32)
         if feat.ndim != 3 or feat.shape[0] != 1 or feat.shape[1] != N_MELS:
             raise ValueError(f"make_cnn_features returnerte {feat.shape}, forventet [1,{N_MELS},T]")
-
         x = torch.from_numpy(feat)
         if self.augment:
             x = _spec_mask(x)
@@ -153,79 +159,70 @@ class SmallCNN(nn.Module):
         return self.head(self.feat(x))
 
 # --------------------------
-# Trening / evaluering (stille)
+# Trening / evaluering
 # --------------------------
-def accuracy_from_logits(logits, y):
-    return (logits.argmax(1) == y).float().mean().item()
+def _acc(logits, y): return (logits.argmax(1) == y).float().mean().item()
 
 @torch.no_grad()
 def evaluate(model, loader, device):
     model.eval()
-    crit = nn.CrossEntropyLoss()
-    tot_loss = 0.0; tot_acc = 0.0; n = 0
+    loss_fn = nn.CrossEntropyLoss()
+    tot_l = 0.0; tot_a = 0.0; n = 0
     for xb, yb in loader:
         xb, yb = xb.to(device), yb.to(device)
-        logits = model(xb)
-        loss = crit(logits, yb)
+        out = model(xb); loss = loss_fn(out, yb)
         bs = xb.size(0)
-        tot_loss += loss.item() * bs
-        tot_acc  += accuracy_from_logits(logits, yb) * bs
-        n += bs
-    return tot_loss / n, tot_acc / n
+        tot_l += loss.item()*bs; tot_a += _acc(out, yb)*bs; n += bs
+    return tot_l/n, tot_a/n
 
 def train(train_root, val_root,
-          class_names=("engine1_good", "engine2_broken", "engine3_heavyload"),
-          batch_size=32, epochs=25, lr=3e-4,
-          device="cuda" if torch.cuda.is_available() else "cpu"):
+          class_names=CLASSES, batch_size=32, epochs=25, lr=3e-4):
+    device = pick_device()
 
     train_ds = EngineDataset(train_root, split="train", class_names=class_names, augment=True)
     val_ds   = EngineDataset(val_root,   split="val",   class_names=class_names, augment=False)
 
     # num_workers=0 for stabilitet på macOS/Windows
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0, pin_memory=True)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0)
+    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
 
     model = SmallCNN(n_classes=len(class_names)).to(device)
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
-    crit = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss()
 
-    best_acc = 0.0
-    bad = 0
-    patience = 7
-    save_path = "engine_cnn_best.pt"
+    best_acc, bad, patience = 0.0, 0, 7
+    save_path = Path(__file__).resolve().parents[1] / "engine_cnn_best.pt"
 
     for _ in range(epochs):
         model.train()
         for xb, yb in train_loader:
             xb, yb = xb.to(device), yb.to(device)
             opt.zero_grad(set_to_none=True)
-            logits = model(xb)
-            loss = crit(logits, yb)
+            out = model(xb); loss = loss_fn(out, yb)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             opt.step()
 
         _, val_acc = evaluate(model, val_loader, device)
         if val_acc > best_acc:
-            best_acc = val_acc; bad = 0
+            best_acc, bad = val_acc, 0
             torch.save({"model_state": model.state_dict(),
                         "class_names": class_names}, save_path)
         else:
             bad += 1
-            if bad >= patience:
-                break
+            if bad >= patience: break
 
-    if os.path.exists(save_path):
+    # last beste weights tilbake
+    if save_path.exists():
         ckpt = torch.load(save_path, map_location=device)
         model.load_state_dict(ckpt["model_state"])
     return model
 
 # --------------------------
-# MAIN – bruker data/train og data/test
+# MAIN
 # --------------------------
 if __name__ == "__main__":
-    PROJECT_ROOT = Path(__file__).resolve().parents[1]
-    TRAIN_ROOT = PROJECT_ROOT / "data" / "train"
-    VAL_ROOT   = PROJECT_ROOT / "data" / "test"
-    CLASSES = ("engine1_good", "engine2_broken", "engine3_heavyload")
+    ROOT = Path(__file__).resolve().parents[1]
+    TRAIN_ROOT = ROOT / "data" / "train"
+    VAL_ROOT   = ROOT / "data" / "test"
     train(TRAIN_ROOT, VAL_ROOT, class_names=CLASSES, epochs=25, batch_size=32)

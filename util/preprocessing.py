@@ -1,4 +1,3 @@
-from scipy.signal import butter, filtfilt
 import numpy as np
 import librosa
 import time
@@ -82,14 +81,24 @@ def reduce_noise(audio_array: np.ndarray, sample_rate: int, noise_duration=0.5, 
     return audio_denoised
 
 
-# Filters frequenies under *cutoff_freq* Hz
-def filter_outlying_freq(audio_array: np.ndarray, sample_rate: int, cutoff_freq: int, order=4):
-    half_sr = sample_rate / 2;
-    norm_cutoff = cutoff_freq / half_sr;
-    b, a = butter(order, norm_cutoff, btype="low", analog=False)
-    filtered_audio = filtfilt(b, a, audio_array)
-    return filtered_audio
+def filter_outlying_freq(audio_array: np.ndarray, sample_rate: int, cutoff_freq: int) -> np.ndarray:
+    """
+    Minimal FFT-lavpass uten. Setter alle frekvenser over cutoff til 0 
+    (hard cutoff). Raskt, portabelt og godt nok til log-mel + CNN.
+    """
+    x = np.asarray(audio_array, dtype=np.float32)
+    n = x.shape[-1]
+    if n == 0:
+        return x
 
+    Y = np.fft.rfft(x)
+    freqs = np.fft.rfftfreq(n, d=1.0 / sample_rate)
+
+    Y[freqs > float(cutoff_freq)] = 0.0
+    y = np.fft.irfft(Y, n=n)
+
+    m = np.max(np.abs(y)) + 1e-8
+    return (y / m).astype(np.float32)
 
 # Segmentizes the audio_array
 def segmentize(audio_array: np.ndarray, sample_rate: int):
