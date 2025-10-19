@@ -39,7 +39,7 @@ def _read_mid_segment(path: str, duration_s: float, target_sr: int) -> np.ndarra
         y = librosa.resample(y, orig_sr=sr, target_sr=target_sr, res_type="soxr_hq")
     return y
 
-# --- dataset ---
+# --- dataset (gjør innlesing identisk med trening) ---
 class EngineDataset(Dataset):
     def __init__(self, root, class_names):
         self.items = []
@@ -47,21 +47,36 @@ class EngineDataset(Dataset):
         self.class_to_idx = {c: i for i, c in enumerate(class_names)}
         self.target_len = _target_len()
 
+        root = Path(root)
         for cname in class_names:
-            folder = Path(root) / cname
-            files = sorted([f for f in folder.glob("*.wav")])
+            folder = root / cname
+            files = sorted(folder.glob("*.wav"))
             if not files:
                 raise FileNotFoundError(f"Ingen WAV i {folder}")
             self.items += [(str(f), self.class_to_idx[cname]) for f in files]
 
-    def __len__(self): return len(self.items)
+    def __len__(self): 
+        return len(self.items)
 
     def __getitem__(self, idx):
         path, label = self.items[idx]
-        y = _read_mid_segment(path, DURATION, SR)
+
+        # Samme innlesing som i trening:
+        y, _ = librosa.load(path, sr=SR, mono=True)
+
+        # Samme lengdebehandling som i trening (center crop i val/test):
         y = _center_crop_or_pad(y, self.target_len)
-        feat = make_cnn_features(y, SR)  # [1, n_mels, T]
-        x = torch.from_numpy(feat.astype(np.float32))
+
+        feat = make_cnn_features(y, SR)  # [1, N_MELS, T]
+        feat = feat.astype(np.float32)
+
+        # --- Sanitetssjekker (fanger feature-kollaps) ---
+        if not np.isfinite(feat).all():
+            raise RuntimeError(f"NaN/inf i features for {path}")
+        if np.std(feat) < 1e-7:
+            raise RuntimeError(f"Nesten konstant feature for {path} (std={np.std(feat):.2e})")
+
+        x = torch.from_numpy(feat)  # [1, n_mels, T]
         return x, label
 
 # --- plotting ---
@@ -83,47 +98,48 @@ def plot_confusion(cm, classes):
     plt.tight_layout()
     plt.show()
 
-# --- hovedkjøring ---
 def test_model(model_path, data_root):
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-    print(f"[INFO] Kjører på: {device}")
+    torch.set_grad_enabled(False)
 
     ckpt = torch.load(model_path, map_location=device)
     class_names = tuple(ckpt["class_names"])
-    print(f"[INFO] Klasser: {class_names}")
 
     ds = EngineDataset(data_root, class_names)
-    dl = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=False)
+    # num_workers=0 er tryggest på macOS/Windows
+    dl = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
     model = SmallCNN(n_classes=len(class_names)).to(device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
     y_true, y_pred = [], []
+    for xb, yb in dl:
+        xb = xb.to(device)
+        logits = model(xb)
+        pred = logits.argmax(1).cpu().numpy()
+        y_true.append(yb.numpy())
+        y_pred.append(pred)
 
-    with torch.no_grad():
-        for xb, yb in dl:
-            xb = xb.to(device)
-            out = model(xb)
-            pred = out.argmax(1).cpu().numpy()
-            y_true.append(yb.numpy())
-            y_pred.append(pred)
+    y_true = np.concatenate(y_true); y_pred = np.concatenate(y_pred)
 
-    y_true = np.concatenate(y_true)
-    y_pred = np.concatenate(y_pred)
+    # Rask sanity: per-klasse telling
+    from collections import Counter
+    print("Test fordeling:", Counter(y_true))
+    print("Pred fordeling:", Counter(y_pred))
 
     acc = (y_true == y_pred).mean()
     print(f"\nTest accuracy: {acc:.4f}")
 
-    # confusion matrix
+    # Confusion matrix + plot (som du hadde)
     n = len(class_names)
-    cm = np.zeros((n,n), dtype=int)
-    for t,p in zip(y_true, y_pred):
-        cm[t,p] += 1
+    cm = np.zeros((n, n), dtype=int)
+    for t, p in zip(y_true, y_pred):
+        cm[t, p] += 1
     plot_confusion(cm, class_names)
 
 if __name__ == "__main__":
-    PROJECT = Path(__file__).resolve().parents[1]
-    MODEL = PROJECT / "engine_cnn_best.pt"
-    TEST_DATA = PROJECT / "data" / "test"
+    PROJECT  = Path(__file__).resolve().parents[1]
+    MODEL    = PROJECT / "engine_cnn_best.pt"
+    TEST_DATA = PROJECT / "data" / "test_cut"   # <-- bruk test_cut
     test_model(MODEL, TEST_DATA)

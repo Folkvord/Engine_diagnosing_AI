@@ -28,7 +28,7 @@ def set_seed(seed=42):
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
 set_seed(42)
 
-# === Enhetsvalg (cuda -> mps -> cpu) ===
+# for at det skal funke på NVIDIA GPU, mps og for oss tapere med mac :(
 def pick_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
@@ -223,6 +223,10 @@ def train(train_root, val_root,
 # --------------------------
 if __name__ == "__main__":
     ROOT = Path(__file__).resolve().parents[1]
-    TRAIN_ROOT = ROOT / "data" / "train"
-    VAL_ROOT   = ROOT / "data" / "test"
-    train(TRAIN_ROOT, VAL_ROOT, class_names=CLASSES, epochs=25, batch_size=32)
+    TRAIN_ROOT = ROOT / "data" / "train_cut"   # <-- bruk train_cut
+    VAL_ROOT   = ROOT / "data" / "test_cut"    # <-- bruk test_cut
+    print(f"[DEBUG] train root: {TRAIN_ROOT}")
+    print(f"[DEBUG] val root:   {VAL_ROOT}")
+    model = train(TRAIN_ROOT, VAL_ROOT,
+                  class_names=("engine1_good","engine2_broken","engine3_heavyload"),
+                  epochs=40, batch_size=32, lr=1e-3)
