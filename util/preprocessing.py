@@ -111,25 +111,25 @@ def segmentize(audio_array: np.ndarray, sample_rate: int):
 def select_features(audio_array: np.ndarray, sample_rate: int):
     # "Lydsignatur"
     mfcc = librosa.feature.mfcc(y=audio_array, sr=sample_rate, n_mfcc=20)
-    # Tyngepunktet i filen
-    centroid = librosa.feature.spectral_centroid(y=audio_array, sr=sample_rate)
-    # Bredden på frekvenseinnholdet
-    bandwidth = librosa.feature.spectral_bandwidth(y=audio_array, sr=sample_rate)
-    # idk LOL
-    rolloff = librosa.feature.spectral_rolloff(y=audio_array, sr=sample_rate, roll_percent=0.5)
-    # Hvor kraftig signalet er
-    rms = librosa.feature.rms(y=audio_array)
-    # Hvor ofte lydfilen krysser null
-    zcr = librosa.feature.zero_crossing_rate(y=audio_array)
+    ## Tyngepunktet i filen
+    #centroid = librosa.feature.spectral_centroid(y=audio_array, sr=sample_rate)
+    ## Bredden på frekvenseinnholdet
+    #bandwidth = librosa.feature.spectral_bandwidth(y=audio_array, sr=sample_rate)
+    ## idk LOL
+    #rolloff = librosa.feature.spectral_rolloff(y=audio_array, sr=sample_rate, roll_percent=0.5)
+    ## Hvor kraftig signalet er
+    #rms = librosa.feature.rms(y=audio_array)
+    ## Hvor ofte lydfilen krysser null
+    #zcr = librosa.feature.zero_crossing_rate(y=audio_array)
 
     packed_features = np.hstack([
-        np.mean(mfcc, axis=1),
-        np.std(mfcc, axis=1),
-        np.mean(centroid),
-        np.mean(bandwidth),
-        np.mean(rolloff),
-        np.mean(rms),
-        np.mean(zcr)
+        np.mean(mfcc),
+        np.std(mfcc)
+        #np.mean(centroid),
+        #np.mean(bandwidth),
+        #np.mean(rolloff),
+        #np.mean(rms),
+        #np.mean(zcr)
     ])
 
     return packed_features
