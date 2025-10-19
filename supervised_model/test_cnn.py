@@ -137,9 +137,12 @@ def test_model(model_path, data_root):
     for t, p in zip(y_true, y_pred):
         cm[t, p] += 1
     plot_confusion(cm, class_names)
+    acc = (np.trace(cm) / np.sum(cm))
+    print(f"Total accuracy: {acc*100:.2f}%")
 
 if __name__ == "__main__":
     PROJECT  = Path(__file__).resolve().parents[1]
     MODEL    = PROJECT / "engine_cnn_best.pt"
     TEST_DATA = PROJECT / "data" / "test_cut"   # <-- bruk test_cut
     test_model(MODEL, TEST_DATA)
+    
