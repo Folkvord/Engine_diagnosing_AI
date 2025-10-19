@@ -10,8 +10,10 @@ from collections import Counter
 # slik at vi kan importere treningsmodellen
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from supervised_model.train_cnn import SmallCNN
-from util.preprocessing import make_cnn_features
+from supervised_model.diagnose_data import supervised_preprocess_pipeline
 
+if not callable(supervised_preprocess_pipeline):
+    raise ImportError("Fant ikke supervised_preprocess_pipeline i diagnose_data.py")
 # --- konfig ---
 SR = 16000
 DURATION = 2.0
@@ -69,7 +71,7 @@ class EngineDataset(Dataset):
         # Samme lengdebehandling som i trening (center crop i val/test):
         y = _center_crop_or_pad(y, self.target_len)
 
-        feat = make_cnn_features(y, SR)  # [1, N_MELS, T]
+        feat = supervised_preprocess_pipeline(y, SR)  # [1, N_MELS, T]
         feat = feat.astype(np.float32)
 
         # --- Sanitetssjekker (fanger feature-kollaps) ---
