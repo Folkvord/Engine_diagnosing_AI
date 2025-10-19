@@ -10,7 +10,7 @@ from collections import Counter
 # slik at vi kan importere treningsmodellen
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from supervised_model.train_cnn import SmallCNN
-from supervised_model.diagnose_data import supervised_preprocess_pipeline
+from util.preprocessing import supervised_preprocess_pipeline
 
 if not callable(supervised_preprocess_pipeline):
     raise ImportError("Fant ikke supervised_preprocess_pipeline i diagnose_data.py")

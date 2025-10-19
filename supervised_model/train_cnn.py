@@ -19,7 +19,7 @@ N_MELS   = 64
 CLASSES  = ("engine1_good", "engine2_broken", "engine3_heavyload")
 
 # === Adapter fra preprosesseringsfila (brukes for CNN-features) ===
-from supervised_model.diagnose_data import supervised_preprocess_pipeline
+from util.preprocessing import supervised_preprocess_pipeline
 if not callable(supervised_preprocess_pipeline):
     raise ImportError("Fant ikke supervised_preprocess_pipeline i supervised_model/diagnose_data.py")
 
