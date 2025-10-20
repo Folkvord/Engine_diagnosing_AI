@@ -23,7 +23,8 @@ from util.preprocessing import supervised_preprocess_pipeline
 if not callable(supervised_preprocess_pipeline):
     raise ImportError("Fant ikke supervised_preprocess_pipeline i supervised_model/diagnose_data.py")
 
-# === Reproduserbarhet ===
+# Setting a constant seed so everything that uses random
+# is the same everytime the code is run. Ensures reproducabilty. 
 def set_seed(seed=42):
     random.seed(seed); np.random.seed(seed)
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
@@ -37,9 +38,8 @@ def pick_device() -> torch.device:
         return torch.device("mps")
     return torch.device("cpu")
 
-# --------------------------
-# Hjelpefunksjoner
-# --------------------------
+# Helpful/Support functions :) 
+
 def _target_len() -> int:
     return int(SR * DURATION)
 
@@ -75,9 +75,9 @@ def _spec_mask(x: torch.Tensor):
     x[:, :, tstart:tstart + tmask] = 0.0
     return x
 
-# --------------------------
+# --------------------------------------------------------------
 # Dataset
-# --------------------------
+
 class EngineDataset(Dataset):
     def __init__(self, root, split="train",
                  class_names=CLASSES, augment=True, seed=42):
@@ -122,9 +122,9 @@ class EngineDataset(Dataset):
             x = _spec_mask(x)
         return x, label
 
-# --------------------------
+# --------------------------------------------------------------------
 # CNN-modell
-# --------------------------
+
 class ConvBlock(nn.Module):
     def __init__(self, c_in, c_out, k=(3,3), p=(1,1), pool=(2,2), drop=0.1):
         super().__init__()
@@ -160,10 +160,11 @@ class SmallCNN(nn.Module):
         return self.head(self.feat(x))
 
 # --------------------------
-# Trening / evaluering
-# --------------------------
-def _acc(logits, y): return (logits.argmax(1) == y).float().mean().item()
+# Training/evaluating
 
+def _acc(logits, y): return (logits.argmax(1) == y).float().mean().item()
+# adding no gradient so it doesnt save lots og unnessacery info, reducing
+# performance
 @torch.no_grad()
 def evaluate(model, loader, device):
     model.eval()
@@ -191,7 +192,7 @@ def train(train_root, val_root,
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     loss_fn = nn.CrossEntropyLoss()
 
-    best_acc, bad, patience = 0.0, 0, 7
+    best_acc, bad, patience = 0.0, 0, 12
     save_path = Path(__file__).resolve().parents[1] / "engine_cnn_best.pt"
 
     for epoch in range(epochs):
