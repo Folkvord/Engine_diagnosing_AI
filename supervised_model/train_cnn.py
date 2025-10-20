@@ -192,7 +192,7 @@ def train(train_root, val_root,
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     loss_fn = nn.CrossEntropyLoss()
 
-    best_acc, bad, patience = 0.0, 0, 12
+    best_acc, bad, patience = 0.0, 0, 3
     save_path = Path(__file__).resolve().parents[1] / "engine_cnn_best.pt"
 
     for epoch in range(epochs):

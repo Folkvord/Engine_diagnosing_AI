@@ -2,7 +2,9 @@
 import os, sys, torch, librosa
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # no GUI needed
+matplotlib.use('Agg')  
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.font_manager import FontProperties
 import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
@@ -86,33 +88,22 @@ class EngineDataset(Dataset):
 def plot_confusion(cm, classes, save_path="confusion_matrix.png", 
                    ui_font="Nunito", num_font="Inter",
                    title_size=22, tick_size=13, text_size=12):
-    """
-    - Bruker en moderne, litt tykkere sans-serif (Nunito) til labels/tittel.
-    - Bruker en egen, svært leselig font (Inter) for tallene i rutene.
-    - Samme pastell rosa→lilla-palett som du allerede bruker.
-    - Bedre margins så figuren ikke presses mot høyre.
-    """
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from matplotlib.colors import LinearSegmentedColormap
-    from matplotlib.font_manager import FontProperties
 
-    # Pastell rosa → lilla (som før)
+
     pastel_pink_purple = LinearSegmentedColormap.from_list(
         "pastel_pink_purple", ["#f9b4e9", "#e0b7e7", "#c9a7e7"], N=256
     )
 
     # font for the words
-    mpl.rcParams.update({
+    matplotlib.rcParams.update({
         "font.family": ui_font,
         "font.size": tick_size,
         "axes.titleweight": "semibold",
     })
     # font for the numbers
     num_fp = FontProperties(family=num_font)  
-    # Kortere visningsetiketter (som i skissen din)
-    # "Good, Broken, HL" hvis klassene dine ender på good/broken/heavyload
+    
+    # 
     parsed = [str(c).split("_")[-1].lower() for c in classes]
     if set(parsed) >= {"good", "broken", "heavyload"}:
         display_labels = ["good", "broken", "heavyload"]
