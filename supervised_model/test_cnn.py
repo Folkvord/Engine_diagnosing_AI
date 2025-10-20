@@ -15,7 +15,7 @@ from util.preprocessing import supervised_preprocess_pipeline
 if not callable(supervised_preprocess_pipeline):
     raise ImportError("Fant ikke supervised_preprocess_pipeline i util/preprocessing.py")
 
-# --- config (must match training) ---
+# Setting some global variabels for consitancy 
 SR = 16000
 DURATION = 2.0
 N_MELS = 64
@@ -27,7 +27,7 @@ def _set_seed(s=SEED):
     random.seed(s); np.random.seed(s); torch.manual_seed(s)
 _set_seed()
 
-# --- helpers ---
+# support functions <3 tihi 
 def _target_len(): return int(SR * DURATION)
 
 def _center_crop_or_pad(y, L):
@@ -39,7 +39,7 @@ def _center_crop_or_pad(y, L):
     start = (cur - L) // 2
     return y[start:start + L]
 
-# --- dataset (mirror training IO path) ---
+# dataset (mirror training IO path)
 class EngineDataset(Dataset):
     def __init__(self, root, class_names):
         self.items = []
@@ -60,16 +60,18 @@ class EngineDataset(Dataset):
 
     def __getitem__(self, idx):
         path, label = self.items[idx]
-        # exact same loading policy as training: librosa.load -> SR -> mono
+        # same loading policy as in  training
         y, _ = librosa.load(path, sr=SR, mono=True)
         # same length policy as validation: center crop/pad
         y = _center_crop_or_pad(y, self.target_len)
 
-        # same adapter as training (supervised_preprocess_pipeline)
-        feat = supervised_preprocess_pipeline(y, SR)   # expect [1, N_MELS, T]
+        # usin the supvervised adapter 
+        feat = supervised_preprocess_pipeline(y, SR)  
         feat = np.asarray(feat, dtype=np.float32)
 
-        # sanity checks (catch collapsed features)
+        # sanity checks:
+        # find the three most commen fall throughs in preprossering 
+        # of the spectograms: like catching collapsed features
         if feat.ndim != 3 or feat.shape[0] != 1 or feat.shape[1] != N_MELS:
             raise ValueError(f"Bad feature shape {feat.shape}, expected [1,{N_MELS},T]")
         if not np.isfinite(feat).all():
@@ -80,26 +82,80 @@ class EngineDataset(Dataset):
         x = torch.from_numpy(feat)  # [1, n_mels, T]
         return x, label
 
-# --- plotting ---
-def plot_confusion(cm, classes, save_path="confusion_matrix.png"):
-    plt.figure(figsize=(6.5, 6.0))
-    plt.imshow(cm, interpolation="nearest", cmap="viridis")
-    plt.title("Confusion Matrix")
-    plt.colorbar()
-    ticks = np.arange(len(classes))
-    plt.xticks(ticks, classes, rotation=45, ha="right")
-    plt.yticks(ticks, classes)
-    thresh = cm.max()/2 if cm.max() > 0 else 1
-    for i in range(len(classes)):
-        for j in range(len(classes)):
-            plt.text(j, i, str(cm[i, j]), ha="center", va="center",
-                     color="white" if cm[i, j] > thresh else "black")
-    plt.xlabel("Predicted")
-    plt.ylabel("True")
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150)
+# plotting for the graphics :)) love graphics
+def plot_confusion(cm, classes, save_path="confusion_matrix.png", 
+                   ui_font="Nunito", num_font="Inter",
+                   title_size=22, tick_size=13, text_size=12):
+    """
+    - Bruker en moderne, litt tykkere sans-serif (Nunito) til labels/tittel.
+    - Bruker en egen, svært leselig font (Inter) for tallene i rutene.
+    - Samme pastell rosa→lilla-palett som du allerede bruker.
+    - Bedre margins så figuren ikke presses mot høyre.
+    """
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.colors import LinearSegmentedColormap
+    from matplotlib.font_manager import FontProperties
+
+    # Pastell rosa → lilla (som før)
+    pastel_pink_purple = LinearSegmentedColormap.from_list(
+        "pastel_pink_purple", ["#f9b4e9", "#e0b7e7", "#c9a7e7"], N=256
+    )
+
+    # font for the words
+    mpl.rcParams.update({
+        "font.family": ui_font,
+        "font.size": tick_size,
+        "axes.titleweight": "semibold",
+    })
+    # font for the numbers
+    num_fp = FontProperties(family=num_font)  
+    # Kortere visningsetiketter (som i skissen din)
+    # "Good, Broken, HL" hvis klassene dine ender på good/broken/heavyload
+    parsed = [str(c).split("_")[-1].lower() for c in classes]
+    if set(parsed) >= {"good", "broken", "heavyload"}:
+        display_labels = ["good", "broken", "heavyload"]
+    # fallback
+    else:
+        display_labels = classes  
+
+    n = len(display_labels)
+
+    # The figure with padding for esthetics 
+    fig, ax = plt.subplots(figsize=(7.0, 6.2), constrained_layout=False)
+    im = ax.imshow(cm, interpolation="nearest", cmap=pastel_pink_purple, aspect="auto")
+
+    ax.set_title("CONFUSION MATRIX", fontsize=title_size, fontweight="bold", pad=12)
+
+    ticks = np.arange(n)
+    ax.set_xticks(ticks, display_labels, rotation=0, ha="center", fontsize=tick_size)
+    ax.set_yticks(ticks, display_labels, fontsize=tick_size)
+
+    # Colorbar
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    # the numbers for the matrix
+    thresh = cm.max() / 2 if cm.max() > 0 else 1
+    for i in range(n):
+        for j in range(n):
+            ax.text(
+                j, i, str(cm[i, j]),
+                ha="center", va="center",
+                fontsize=text_size,
+                fontproperties=num_fp,            
+                color="white" if cm[i, j] > thresh else "black",
+            )
+
+    ax.set_xlabel("PREDICTED", fontsize=tick_size+1, labelpad=8)
+    ax.set_ylabel("TRUE", fontsize=tick_size+1, labelpad=8)
+
+    # spacing 
+    fig.subplots_adjust(left=0.20, right=0.95, bottom=0.20, top=0.88)
+
+    fig.savefig(save_path, dpi=200, bbox_inches="tight")
     print(f"[INFO] Saved confusion matrix -> {save_path}")
-    plt.close()
+    plt.close(fig)
 
 # --- main test ---
 def test_model(model_path, data_root):
