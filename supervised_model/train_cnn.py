@@ -12,18 +12,17 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
 
-# === Lydparametre (må matche adapteren i util/preprocessing.py) ===
+# Globale variables for simplicity 
 SR       = 16000
 DURATION = 2.0
 N_MELS   = 64
 CLASSES  = ("engine1_good", "engine2_broken", "engine3_heavyload")
 
-# === Adapter fra preprosesseringsfila (brukes for CNN-features) ===
+# Getting the preprocess pipeline for supervised from util
 from util.preprocessing import supervised_preprocess_pipeline
-if not callable(supervised_preprocess_pipeline):
-    raise ImportError("Fant ikke supervised_preprocess_pipeline i supervised_model/diagnose_data.py")
 
-# === Reproduserbarhet ===
+# Setting a constant seed so everything that uses random
+# is the same everytime the code is run. Ensures reproducabilty. 
 def set_seed(seed=42):
     random.seed(seed); np.random.seed(seed)
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
@@ -37,9 +36,8 @@ def pick_device() -> torch.device:
         return torch.device("mps")
     return torch.device("cpu")
 
-# --------------------------
-# Hjelpefunksjoner
-# --------------------------
+# Helpful/Support functions :) 
+
 def _target_len() -> int:
     return int(SR * DURATION)
 
@@ -75,9 +73,9 @@ def _spec_mask(x: torch.Tensor):
     x[:, :, tstart:tstart + tmask] = 0.0
     return x
 
-# --------------------------
+# --------------------------------------------------------------
 # Dataset
-# --------------------------
+
 class EngineDataset(Dataset):
     def __init__(self, root, split="train",
                  class_names=CLASSES, augment=True, seed=42):
@@ -106,14 +104,16 @@ class EngineDataset(Dataset):
 
     def __len__(self): return len(self.items)
 
+    # Gets audio, fix length, extract features,
+    # and return (x, label) for training
     def __getitem__(self, idx: int):
         path, label = self.items[idx]
-        # raskt og robust: librosa loader og resampler til SR
+        # 
         y, _ = librosa.load(path, sr=SR, mono=True)
         # fast lengde
         y = _random_crop_or_pad(y, self.target_len) if self.augment else _center_crop_or_pad(y, self.target_len)
         # features
-        feat = supervised_preprocess_pipeline(y, SR)              # [1, N_MELS, T]
+        feat = supervised_preprocess_pipeline(y, SR)             
         feat = np.asarray(feat, dtype=np.float32)
         if feat.ndim != 3 or feat.shape[0] != 1 or feat.shape[1] != N_MELS:
             raise ValueError(f"make_cnn_features returnerte {feat.shape}, forventet [1,{N_MELS},T]")
@@ -122,9 +122,9 @@ class EngineDataset(Dataset):
             x = _spec_mask(x)
         return x, label
 
-# --------------------------
+# --------------------------------------------------------------------
 # CNN-modell
-# --------------------------
+
 class ConvBlock(nn.Module):
     def __init__(self, c_in, c_out, k=(3,3), p=(1,1), pool=(2,2), drop=0.1):
         super().__init__()
@@ -143,11 +143,14 @@ class ConvBlock(nn.Module):
 class SmallCNN(nn.Module):
     def __init__(self, n_classes=3):
         super().__init__()
+        # feature extractor (convolution)
         self.feat = nn.Sequential(
             ConvBlock(1, 32, drop=0.10),
             ConvBlock(32, 64, drop=0.15),
             ConvBlock(64, 128, drop=0.20),
         )
+        # takes the feature maps made, and "translates" them
+        # into a classification
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool2d((1,1)),
             nn.Flatten(),
@@ -156,14 +159,16 @@ class SmallCNN(nn.Module):
             nn.Dropout(0.20),
             nn.Linear(64, n_classes),
         )
+    # sends the output to a lineær klassifikasjonslag
     def forward(self, x):
         return self.head(self.feat(x))
 
 # --------------------------
-# Trening / evaluering
-# --------------------------
-def _acc(logits, y): return (logits.argmax(1) == y).float().mean().item()
+# Training/evaluating
 
+def _acc(logits, y): return (logits.argmax(1) == y).float().mean().item()
+# adding no gradient so it doesnt save lots og unnessacery info, reducing
+# performance
 @torch.no_grad()
 def evaluate(model, loader, device):
     model.eval()
@@ -183,7 +188,7 @@ def train(train_root, val_root,
     train_ds = EngineDataset(train_root, split="train", class_names=class_names, augment=True)
     val_ds   = EngineDataset(val_root,   split="val",   class_names=class_names, augment=False)
 
-    # num_workers=0 for stabilitet på macOS/Windows
+    # num_workers=0 for stability cross enviormment (Sofie has Mac :D)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
 
@@ -191,7 +196,7 @@ def train(train_root, val_root,
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     loss_fn = nn.CrossEntropyLoss()
 
-    best_acc, bad, patience = 0.0, 0, 7
+    best_acc, bad, patience = 0.0, 0, 3
     save_path = Path(__file__).resolve().parents[1] / "engine_cnn_best.pt"
 
     for epoch in range(epochs):
@@ -207,13 +212,13 @@ def train(train_root, val_root,
             opt.step()
             running_loss += loss.item() * xb.size(0)
 
-    # Evaluate after each epoch
+    # evaluate after each epoch, to see if we can stopp
         val_loss, val_acc = evaluate(model, val_loader, device)
         avg_train_loss = running_loss / len(train_loader.dataset)
         print(f"Epoch {epoch+1}/{epochs} | Train loss: {avg_train_loss:.4f} | "
             f"Val loss: {val_loss:.4f} | Val acc: {val_acc:.3f}")
 
-    # Early stopping logic
+    # early stopping logic if "patience have run out"
         if val_acc > best_acc:
             best_acc, bad = val_acc, 0
             torch.save({"model_state": model.state_dict(),
@@ -225,7 +230,7 @@ def train(train_root, val_root,
                 break
 
 
-    # last beste weights tilbake
+    # loads beste weights back 
     if save_path.exists():
         ckpt = torch.load(save_path, map_location=device)
         model.load_state_dict(ckpt["model_state"])
@@ -233,11 +238,11 @@ def train(train_root, val_root,
 
 # --------------------------
 # MAIN
-# --------------------------
+
 if __name__ == "__main__":
     ROOT = Path(__file__).resolve().parents[1]
-    TRAIN_ROOT = ROOT / "data" / "train_cut"   # <-- bruk train_cut
-    VAL_ROOT   = ROOT / "data" / "test_cut"    # <-- bruk test_cut
+    TRAIN_ROOT = ROOT / "data" / "train_cut"   
+    VAL_ROOT   = ROOT / "data" / "test_cut"
     print(f"[DEBUG] train root: {TRAIN_ROOT}")
     print(f"[DEBUG] val root:   {VAL_ROOT}")
     model = train(TRAIN_ROOT, VAL_ROOT,
