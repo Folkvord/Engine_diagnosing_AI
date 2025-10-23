@@ -1,4 +1,3 @@
-# supervised_model/train_cnn.py
 import os, sys, random
 from pathlib import Path
 from typing import List, Dict, Tuple
@@ -28,7 +27,7 @@ def set_seed(seed=42):
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
 set_seed(42)
 
-# for at det skal funke på NVIDIA GPU, mps og for oss tapere med mac :(
+# tries so do cuda first, for nvidia gpu
 def pick_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
@@ -51,7 +50,9 @@ def _center_crop_or_pad(y: np.ndarray, target_len: int) -> np.ndarray:
     start = (cur - target_len) // 2
     return y[start:start + target_len]
 
-def _random_crop_or_pad(y: np.ndarray, target_len: int) -> np.ndarray:
+# since the clips of audio already all are the same length 
+# this isnt nesaccery, but added as a safety 
+"""def _random_crop_or_pad(y: np.ndarray, target_len: int) -> np.ndarray:
     cur = y.shape[-1]
     if cur == target_len: return y
     if cur < target_len:
@@ -59,10 +60,12 @@ def _random_crop_or_pad(y: np.ndarray, target_len: int) -> np.ndarray:
         left = np.random.randint(0, pad + 1); right = pad - left
         return np.pad(y, (left, right), mode="reflect")
     start = np.random.randint(0, cur - target_len + 1)
-    return y[start:start + target_len]
+    return y[start:start + target_len]"""
 
 def _spec_mask(x: torch.Tensor):
-    # enkel SpecAugment (kun i tren)
+    # simple SpecAugment, simulates missing or disruptive parts
+    # of the spectrograms - model learns to focus on the general
+    # patterns exsisting
     f = x.shape[1]
     fmask = np.random.randint(0, max(1, f // 10))
     fstart = np.random.randint(0, max(1, f - fmask + 1))
@@ -111,7 +114,7 @@ class EngineDataset(Dataset):
         # 
         y, _ = librosa.load(path, sr=SR, mono=True)
         # fast lengde
-        y = _random_crop_or_pad(y, self.target_len) if self.augment else _center_crop_or_pad(y, self.target_len)
+        #y = _random_crop_or_pad(y, self.target_len) if self.augment else _center_crop_or_pad(y, self.target_len)
         # features
         feat = supervised_preprocess_pipeline(y, SR)             
         feat = np.asarray(feat, dtype=np.float32)
