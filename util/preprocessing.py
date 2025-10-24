@@ -181,9 +181,9 @@ def make_cnn_features(audio_array: np.ndarray,
                       n_fft: int = 1024,
                       hop_length: int = 256,
                       fmin: int = 20,
-                      fmax: int = 8000,
+                      fmax: int = 3500,
                       top_db: float = 80.0,
-                      lowpass_cutoff: int = 5000,
+                      lowpass_cutoff: int = 3500,
                       use_noise_reduction: bool = True) -> np.ndarray:
     """
     Lager normalisert log-mel-spektrogram for CNN.
