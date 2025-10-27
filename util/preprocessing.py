@@ -72,13 +72,13 @@ def unsupervised_preprocess_pipeline(audio_array: np.ndarray, sample_rate: int):
     norm_audio = normalize((audio_array).astype(np.float32))
 
     # Filter outlying frequencies
-    filtered_audio = bandpass_filter(norm_audio, 50, 3000)
+    #filtered_audio = bandpass_filter(norm_audio, 50, 3000)
 
     # Reduce the background noise
-    denoised_audio = reduce_noise_adaptive(filtered_audio, sample_rate)
+    #denoised_audio = reduce_noise_adaptive(filtered_audio, sample_rate)
 
     # Select features
-    selected_features = select_features(denoised_audio, sample_rate)
+    selected_features = select_features(norm_audio, sample_rate)
 
     return selected_features
 
