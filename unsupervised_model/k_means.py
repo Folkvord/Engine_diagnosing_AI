@@ -24,6 +24,12 @@ def print_prediction_result(prediction):
 def plot_points(data, colour):
     plt.scatter(data[:, 0], data[:, 1], c=colour)
 
+def correct(cluster, prediction):
+    n_correct = 0
+    for i in range(len(prediction)):
+        if prediction[i] == cluster:
+            n_correct += 1
+    return n_correct
 
 # Model settings:
 ALGORITHM = "elkan"
@@ -52,10 +58,27 @@ processed_test_heavyload = process.preprocess_data(test_heavyload, "unsupervised
 
 # Train the model
 kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, algorithm=ALGORITHM, random_state=42)
-kmeans_model.fit_predict(processed_train_data)
+kmeans_model.fit(processed_train_data)
 cluster_centres = kmeans_model.cluster_centers_
 cluster_labels = kmeans_model.labels_
+
+good_cluster = kmeans_model.predict(processed_train_good)[0]
+broken_cluster = kmeans_model.predict(processed_train_broken)[0]
+heavyload_cluster = kmeans_model.predict(processed_train_heavyload)[0]
+
+print(f"good_cluster: {good_cluster}")
+print(f"broken_cluster: {broken_cluster}")
+print(f"heavyload_cluster: {heavyload_cluster}")
+
 print(f"[K-MEANS MODEL]: Finished training with {kmeans_model.n_iter_} iterations.")
+
+good_pred = kmeans_model.predict(processed_test_good)
+broken_pred = kmeans_model.predict(processed_test_broken)
+heavyload_pred = kmeans_model.predict(processed_test_heavyload)
+n_correct = correct(good_cluster, good_pred) + correct(broken_cluster, broken_pred) + correct(heavyload_cluster, heavyload_pred)
+n_total = len(good_pred) + len(broken_pred) + len(heavyload_pred)
+
+print(f"ACC: {n_correct / n_total}")
 
 plot_points(processed_train_good, "blue")
 plot_points(processed_train_broken, "gray")
@@ -67,29 +90,4 @@ plot_points(processed_test_good, "blue")
 plot_points(processed_test_broken, "gray")
 plot_points(processed_test_heavyload, "red")
 plot_points(cluster_centres, "black")
-
-""" 
-# Test the shit out of it
-print(f"[K-MEANS MODEL]: Testing good motors...")
-predicted_good = kmeans_model.predict(processed_test_good)
-print("RESULTS FOR GOOD ENGINES:")
-print_prediction_result(predicted_good)
-plot_points(processed_test_good, "blue")
-print()
-
-print(f"[K-MEANS MODEL]: Testing broken motors...")
-predicted_broken = kmeans_model.predict(processed_test_broken)
-print("RESULTS FOR BROKEN ENGINES:")
-print_prediction_result(predicted_broken)
-plot_points(processed_test_broken, "gray")
-print()
-
-print(f"[K-MEANS MODEL]: Testing heavyload motors...")
-predicted_heavyload = kmeans_model.predict(processed_test_heavyload)
-print("RESULTS FOR ENGINES UNDER HEAVY LOAD:")
-print_prediction_result(predicted_heavyload)
-plot_points(processed_test_heavyload, "red")
-print()
-"""
-
 plt.show()
