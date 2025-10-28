@@ -22,7 +22,7 @@ def get_formated_wav(data_type: str, is_train: bool):
 # data_type: "all" processes all types of data
 #            "good", "broken", "heavy load" processes this type
 def get_data_files(type: str, is_train: bool) -> tuple:
-    path = "data/train_cut/" if is_train else "data/test_cut/"
+    path = "Engine_diagnosing_AI/data/train_cut/" if is_train else "Engine_diagnosing_AI/data/test_cut/"
     if type == "all":
         path += "*/*.wav"
     elif type == "good":

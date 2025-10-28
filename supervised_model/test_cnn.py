@@ -8,6 +8,8 @@ from matplotlib.font_manager import FontProperties
 import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
+
 
 # allow importing from project root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -143,7 +145,7 @@ def plot_confusion(cm, classes, save_path="confusion_matrix.png",
 
     # spacing 
     fig.subplots_adjust(left=0.20, right=0.95, bottom=0.20, top=0.88)
-
+    #confusion matrix
     fig.savefig(save_path, dpi=200, bbox_inches="tight")
     print(f"[INFO] Saved confusion matrix -> {save_path}")
     plt.close(fig)
@@ -185,13 +187,21 @@ def test_model(model_path, data_root):
     print("[INFO] Test dist:", Counter(y_true))
     print("[INFO] Pred dist:", Counter(y_pred))
 
-    # accuracy + confusion matrix
+    # metrics (accuracy, precision, recall, f1)
     n = len(class_names)
     cm = np.zeros((n, n), dtype=int)
     for t, p in zip(y_true, y_pred):
         cm[t, p] += 1
+
     acc = (np.trace(cm) / np.sum(cm))
-    print(f"[RESULT] Total accuracy: {acc*100:.2f}%")
+    precision = precision_score(y_true, y_pred, average="macro", zero_division=0)
+    recall    = recall_score(y_true, y_pred, average="macro", zero_division=0)
+    f1        = f1_score(y_true, y_pred, average="macro", zero_division=0)
+
+    print(f"[RESULT] Accuracy : {acc*100:.2f}%")
+    print(f"[RESULT] Precision: {precision*100:.2f}%")
+    print(f"[RESULT] Recall   : {recall*100:.2f}%")
+    print(f"[RESULT] F1-score : {f1*100:.2f}%")
 
     out_png = Path(model_path).with_suffix(".confmat.png")
     plot_confusion(cm, class_names, save_path=str(out_png))
