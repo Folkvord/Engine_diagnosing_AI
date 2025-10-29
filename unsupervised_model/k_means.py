@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 from collections import Counter
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 import util.read_wav as read
 import util.preprocessing as process
@@ -61,16 +62,12 @@ kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, algorithm=ALGORITHM, random
 kmeans_model.fit(processed_train_data)
 cluster_centres = kmeans_model.cluster_centers_
 cluster_labels = kmeans_model.labels_
+print(f"[K-MEANS MODEL]: Finished training with {kmeans_model.n_iter_} iterations.")
 
+# Determine accuracy
 good_cluster = kmeans_model.predict(processed_train_good)[0]
 broken_cluster = kmeans_model.predict(processed_train_broken)[0]
 heavyload_cluster = kmeans_model.predict(processed_train_heavyload)[0]
-
-print(f"good_cluster: {good_cluster}")
-print(f"broken_cluster: {broken_cluster}")
-print(f"heavyload_cluster: {heavyload_cluster}")
-
-print(f"[K-MEANS MODEL]: Finished training with {kmeans_model.n_iter_} iterations.")
 
 good_pred = kmeans_model.predict(processed_test_good)
 broken_pred = kmeans_model.predict(processed_test_broken)
@@ -78,7 +75,12 @@ heavyload_pred = kmeans_model.predict(processed_test_heavyload)
 n_correct = correct(good_cluster, good_pred) + correct(broken_cluster, broken_pred) + correct(heavyload_cluster, heavyload_pred)
 n_total = len(good_pred) + len(broken_pred) + len(heavyload_pred)
 
+answer = [good_cluster] * len(good_pred) + [broken_cluster] * len(broken_pred) + [heavyload_cluster] * len(heavyload_pred)
+tot_pred = list(good_pred) + list(broken_pred) + list(heavyload_pred)
+
 print(f"ACC: {n_correct / n_total}")
+matdisp = ConfusionMatrixDisplay(confusion_matrix(answer, tot_pred))
+matdisp.plot()
 
 plot_points(processed_train_good, "blue")
 plot_points(processed_train_broken, "gray")
