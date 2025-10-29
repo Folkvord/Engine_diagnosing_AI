@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
+"""Supervised model written and implented Sofie Emmelin Weber and Edwina Larsen"""
 
 # Globale variables for simplicity 
 SR       = 16000
