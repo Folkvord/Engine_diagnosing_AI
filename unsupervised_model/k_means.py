@@ -4,7 +4,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
-from collections import Counter
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score
 
 import util.read_wav as read
@@ -15,16 +14,6 @@ import util.preprocessing as process
     - Written by Kristoffer Folkvord
 """
 
-# Prints the prediction result
-def print_prediction_result(prediction):
-    counter = Counter(prediction)
-    for key, val in counter.items():
-        print(f"CLUSTER {key}: {val}")
-
-# Plots datapoints :)
-def plot_points(data, colour):
-    plt.scatter(data[:, 0], data[:, 1], c=colour)
-
 def correct(cluster, prediction):
     n_correct = 0
     for i in range(len(prediction)):
@@ -33,7 +22,6 @@ def correct(cluster, prediction):
     return n_correct
 
 # Model settings:
-ALGORITHM = "elkan"
 N_CLUSTERS = 3
 MAX_ITER = 300
 
@@ -48,7 +36,6 @@ processed_train_broken = process.preprocess_data(train_broken, "unsupervised")
 train_heavyload = read.get_formated_wav(data_type="heavy load", is_train=True)
 processed_train_heavyload = process.preprocess_data(train_heavyload, "unsupervised")
 
-
 test_good = read.get_formated_wav(data_type="good", is_train=False)
 processed_test_good = process.preprocess_data(test_good, "unsupervised")
 test_broken = read.get_formated_wav(data_type="broken", is_train=False)
@@ -58,7 +45,7 @@ processed_test_heavyload = process.preprocess_data(test_heavyload, "unsupervised
 
 
 # Train the model
-kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, algorithm=ALGORITHM, random_state=42)
+kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER)
 kmeans_model.fit(processed_train_data)
 cluster_centres = kmeans_model.cluster_centers_
 cluster_labels = kmeans_model.labels_
@@ -92,14 +79,4 @@ print(f"F1:\t{f1}")
 matdisp = ConfusionMatrixDisplay(confusion_matrix(y_true, y_pred))
 matdisp.plot()
 
-plot_points(processed_train_good, "blue")
-plot_points(processed_train_broken, "gray")
-plot_points(processed_train_heavyload, "red")
-plot_points(cluster_centres, "black")
-plt.show()
-
-plot_points(processed_test_good, "blue")
-plot_points(processed_test_broken, "gray")
-plot_points(processed_test_heavyload, "red")
-plot_points(cluster_centres, "black")
 plt.show()
