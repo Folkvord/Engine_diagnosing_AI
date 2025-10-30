@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 from collections import Counter
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score
 
 import util.read_wav as read
 import util.preprocessing as process
@@ -75,11 +75,21 @@ heavyload_pred = kmeans_model.predict(processed_test_heavyload)
 n_correct = correct(good_cluster, good_pred) + correct(broken_cluster, broken_pred) + correct(heavyload_cluster, heavyload_pred)
 n_total = len(good_pred) + len(broken_pred) + len(heavyload_pred)
 
-answer = [good_cluster] * len(good_pred) + [broken_cluster] * len(broken_pred) + [heavyload_cluster] * len(heavyload_pred)
-tot_pred = list(good_pred) + list(broken_pred) + list(heavyload_pred)
+y_true = [good_cluster] * len(good_pred) + [broken_cluster] * len(broken_pred) + [heavyload_cluster] * len(heavyload_pred)
+y_pred = list(good_pred) + list(broken_pred) + list(heavyload_pred)
 
-print(f"ACC: {n_correct / n_total}")
-matdisp = ConfusionMatrixDisplay(confusion_matrix(answer, tot_pred))
+# Print accuracy scores
+acc = n_correct / n_total
+prec = precision_score(y_true, y_pred, zero_division=0, average="macro")
+recall = recall_score(y_true, y_pred, zero_division=0, average="macro")
+f1 = f1_score(y_true, y_pred, zero_division=0, average="macro")
+
+print(f"ACC:\t{acc}")
+print(f"PREC:\t{prec}")
+print(f"RECALL:\t{recall}")
+print(f"F1:\t{f1}")
+
+matdisp = ConfusionMatrixDisplay(confusion_matrix(y_true, y_pred))
 matdisp.plot()
 
 plot_points(processed_train_good, "blue")
