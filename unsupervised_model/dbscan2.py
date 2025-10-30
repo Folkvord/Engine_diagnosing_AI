@@ -15,12 +15,9 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import random
 
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from util.read_wav import get_formated_wav
 from util.preprocessing import preprocess_data
-
-#  Helper Functions 
 
 def plot_points(points, color, label=None):
     if len(points) == 0:
@@ -43,11 +40,10 @@ def match_label(name):
         return -1
 
 #  Main 
-
 def main():
     print("[DBSCAN ENGINE CLASSIFIER] Starting clustering...")
 
-    # Step 1: Load training data per class
+    # Step 1: Load training data
     train_good = get_formated_wav("good", is_train=True)
     train_broken = get_formated_wav("broken", is_train=True)
     train_heavy = get_formated_wav("heavy load", is_train=True)
@@ -66,8 +62,8 @@ def main():
     X_train_scaled = scaler.fit_transform(X_train)
 
     # Step 3: DBSCAN clustering
-    print("Running DBSCAN on training data...")
-    dbscan = DBSCAN(eps=2.0, min_samples=3, n_jobs=-1)  #tune eps hvis trengs
+    print("Running DBSCAN on training data.")
+    dbscan = DBSCAN(eps=2.0, min_samples=3, n_jobs=-1)
     labels_train = dbscan.fit_predict(X_train_scaled)
 
     core_samples = X_train_scaled[dbscan.core_sample_indices_]
@@ -81,7 +77,7 @@ def main():
     n_clusters = len(set(labels_train)) - (1 if -1 in labels_train else 0)
     print(f"Found {n_clusters} clusters in training data")
 
-    # Step 4: Load test data per class
+    # Step 4: Load test data
     test_good = get_formated_wav("good", is_train=False)
     test_broken = get_formated_wav("broken", is_train=False)
     test_heavy = get_formated_wav("heavy load", is_train=False)
@@ -95,7 +91,7 @@ def main():
 
     X_test_scaled = scaler.transform(X_test)
 
-    # Step 5: Assign test samples to nearest DBSCAN cluster core
+    # Step 5: Assign test samples to nearest DBSCAN cluster
     nearest, _ = pairwise_distances_argmin_min(X_test_scaled, core_samples)
     test_labels = core_labels[nearest]
 
@@ -107,7 +103,6 @@ def main():
         idx = np.where(labels_train == cluster_id)[0]
         majority = np.bincount(labels_train_true[idx]).argmax()
         cluster_mapping[cluster_id] = majority
-
 
     y_pred = np.array([cluster_mapping.get(lbl, -1) for lbl in test_labels])
 
@@ -135,7 +130,7 @@ def main():
         plt.title("DBSCAN Confusion Matrix")
         plt.show()
     else:
-        print("[WARNING] Not enough classes to display a confusion matrix.")
+        print("[WARNING!!] Not enough classes to display a confusion matrix.")
 
     # Step 9: Plot clusters
     plt.figure()
@@ -144,7 +139,7 @@ def main():
     plot_points(X_train_scaled[labels_train_true==2], "red", "Heavy Load")
     plt.scatter(core_samples[:, 0], core_samples[:, 1], c="black", s=50, label="Core Samples")
     plt.legend()
-    plt.title("Training Data with Core Samples")
+    plt.title("Training Data with Core Samples:")
     plt.show()
 
 if __name__ == "__main__":
