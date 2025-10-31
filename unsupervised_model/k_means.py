@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
-from collections import Counter
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_score, recall_score, f1_score
 
 import util.read_wav as read
 import util.preprocessing as process
@@ -14,19 +14,14 @@ import util.preprocessing as process
     - Written by Kristoffer Folkvord
 """
 
-# Prints the prediction result
-def print_prediction_result(prediction):
-    counter = Counter(prediction)
-    for key, val in counter.items():
-        print(f"CLUSTER {key}: {val}")
-
-# Plots datapoints :)
-def plot_points(data, colour):
-    plt.scatter(data[:, 0], data[:, 1], c=colour)
-
+def correct(cluster, prediction):
+    n_correct = 0
+    for i in range(len(prediction)):
+        if prediction[i] == cluster:
+            n_correct += 1
+    return n_correct
 
 # Model settings:
-ALGORITHM = "elkan"
 N_CLUSTERS = 3
 MAX_ITER = 300
 
@@ -41,7 +36,6 @@ processed_train_broken = process.preprocess_data(train_broken, "unsupervised")
 train_heavyload = read.get_formated_wav(data_type="heavy load", is_train=True)
 processed_train_heavyload = process.preprocess_data(train_heavyload, "unsupervised")
 
-
 test_good = read.get_formated_wav(data_type="good", is_train=False)
 processed_test_good = process.preprocess_data(test_good, "unsupervised")
 test_broken = read.get_formated_wav(data_type="broken", is_train=False)
@@ -51,45 +45,38 @@ processed_test_heavyload = process.preprocess_data(test_heavyload, "unsupervised
 
 
 # Train the model
-kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER, algorithm=ALGORITHM, random_state=42)
-kmeans_model.fit_predict(processed_train_data)
+kmeans_model = KMeans(N_CLUSTERS, max_iter=MAX_ITER)
+kmeans_model.fit(processed_train_data)
 cluster_centres = kmeans_model.cluster_centers_
 cluster_labels = kmeans_model.labels_
 print(f"[K-MEANS MODEL]: Finished training with {kmeans_model.n_iter_} iterations.")
 
-plot_points(processed_train_good, "blue")
-plot_points(processed_train_broken, "gray")
-plot_points(processed_train_heavyload, "red")
-plot_points(cluster_centres, "black")
-plt.show()
+# Determine accuracy
+good_cluster = kmeans_model.predict(processed_train_good)[0]
+broken_cluster = kmeans_model.predict(processed_train_broken)[0]
+heavyload_cluster = kmeans_model.predict(processed_train_heavyload)[0]
 
-plot_points(processed_test_good, "blue")
-plot_points(processed_test_broken, "gray")
-plot_points(processed_test_heavyload, "red")
-plot_points(cluster_centres, "black")
+good_pred = kmeans_model.predict(processed_test_good)
+broken_pred = kmeans_model.predict(processed_test_broken)
+heavyload_pred = kmeans_model.predict(processed_test_heavyload)
+n_correct = correct(good_cluster, good_pred) + correct(broken_cluster, broken_pred) + correct(heavyload_cluster, heavyload_pred)
+n_total = len(good_pred) + len(broken_pred) + len(heavyload_pred)
 
-""" 
-# Test the shit out of it
-print(f"[K-MEANS MODEL]: Testing good motors...")
-predicted_good = kmeans_model.predict(processed_test_good)
-print("RESULTS FOR GOOD ENGINES:")
-print_prediction_result(predicted_good)
-plot_points(processed_test_good, "blue")
-print()
+y_true = [good_cluster] * len(good_pred) + [broken_cluster] * len(broken_pred) + [heavyload_cluster] * len(heavyload_pred)
+y_pred = list(good_pred) + list(broken_pred) + list(heavyload_pred)
 
-print(f"[K-MEANS MODEL]: Testing broken motors...")
-predicted_broken = kmeans_model.predict(processed_test_broken)
-print("RESULTS FOR BROKEN ENGINES:")
-print_prediction_result(predicted_broken)
-plot_points(processed_test_broken, "gray")
-print()
+# Print accuracy scores
+acc = n_correct / n_total
+prec = precision_score(y_true, y_pred, zero_division=0, average="macro")
+recall = recall_score(y_true, y_pred, zero_division=0, average="macro")
+f1 = f1_score(y_true, y_pred, zero_division=0, average="macro")
 
-print(f"[K-MEANS MODEL]: Testing heavyload motors...")
-predicted_heavyload = kmeans_model.predict(processed_test_heavyload)
-print("RESULTS FOR ENGINES UNDER HEAVY LOAD:")
-print_prediction_result(predicted_heavyload)
-plot_points(processed_test_heavyload, "red")
-print()
-"""
+print(f"ACC:\t{acc}")
+print(f"PREC:\t{prec}")
+print(f"RECALL:\t{recall}")
+print(f"F1:\t{f1}")
+
+matdisp = ConfusionMatrixDisplay(confusion_matrix(y_true, y_pred))
+matdisp.plot()
 
 plt.show()

@@ -72,10 +72,10 @@ def unsupervised_preprocess_pipeline(audio_array: np.ndarray, sample_rate: int):
     norm_audio = normalize((audio_array).astype(np.float32))
 
     # Filter outlying frequencies
-    #filtered_audio = bandpass_filter(norm_audio, 50, 3000)
+    #filtered_audio = filter_outlying_freq(norm_audio, sample_rate, cutoff_freq=5000)
 
     # Reduce the background noise
-    #denoised_audio = reduce_noise_adaptive(filtered_audio, sample_rate)
+    #denoised_audio = reduce_noise(filtered_audio, sample_rate)
 
     # Select features
     selected_features = select_features(norm_audio, sample_rate)
@@ -86,28 +86,6 @@ def unsupervised_preprocess_pipeline(audio_array: np.ndarray, sample_rate: int):
 # Normalizes an audio_array
 def normalize(audio_array: np.ndarray):
     return audio_array / np.max(np.abs(audio_array) + 1e-8)
-
-def bandpass_filter(data, lowcut=50, highcut=3000, fs=44100, order=5):
-    nyq = 0.5 * fs
-    low, high = lowcut / nyq, highcut / nyq
-    b, a = butter(order, [low, high], btype='band')
-    return lfilter(b, a, data)
-
-def reduce_noise_adaptive(audio_array: np.ndarray, sample_rate: int, prop_decrease=0.5, frame_len=2048, hop_len=512):
-    # 1. STFT
-    S_full, phase = librosa.magphase(librosa.stft(audio_array.astype(np.float32),
-                                                  n_fft=frame_len, hop_length=hop_len))
-    
-    # 2. Estimer støyprofil som minimum (eller lavpercentil) over tid
-    noise_profile = np.percentile(S_full, 10, axis=1, keepdims=True)  # 10% laveste energi
-    
-    # 3. Trekk ut proporsjon av støy
-    S_denoised = S_full - prop_decrease * noise_profile
-    S_denoised = np.maximum(S_denoised, 0.0)
-    
-    # 4. Inverter STFT
-    audio_denoised = librosa.istft(S_denoised * phase, hop_length=hop_len)
-    return audio_denoised
 
 # Modified version of old reduce_noise
 def reduce_noise(audio_array: np.ndarray, sample_rate: int, noise_duration=0.5, prop_decrease=0.5):
@@ -150,25 +128,22 @@ def filter_outlying_freq(audio_array: np.ndarray, sample_rate: int, cutoff_freq:
 def select_features(audio_array: np.ndarray, sample_rate: int):
     # "Lydsignatur"
     mfcc = librosa.feature.mfcc(y=audio_array, sr=sample_rate, n_mfcc=20)
-    ## Tyngepunktet i filen
-    #centroid = librosa.feature.spectral_centroid(y=audio_array, sr=sample_rate)
-    ## Bredden på frekvenseinnholdet
-    #bandwidth = librosa.feature.spectral_bandwidth(y=audio_array, sr=sample_rate)
-    ## idk LOL
-    #rolloff = librosa.feature.spectral_rolloff(y=audio_array, sr=sample_rate, roll_percent=0.5)
-    ## Hvor kraftig signalet er
-    #rms = librosa.feature.rms(y=audio_array)
-    ## Hvor ofte lydfilen krysser null
-    #zcr = librosa.feature.zero_crossing_rate(y=audio_array)
+    # Tyngepunktet i filen
+    centroid = librosa.feature.spectral_centroid(y=audio_array, sr=sample_rate)
+    # Bredden på frekvenseinnholdet
+    bandwidth = librosa.feature.spectral_bandwidth(y=audio_array, sr=sample_rate)
+    # idk LOL
+    rolloff = librosa.feature.spectral_rolloff(y=audio_array, sr=sample_rate, roll_percent=0.5)
 
     packed_features = np.hstack([
         np.mean(mfcc),
-        np.std(mfcc)
-        #np.mean(centroid),
-        #np.mean(bandwidth),
-        #np.mean(rolloff),
-        #np.mean(rms),
-        #np.mean(zcr)
+        np.std(mfcc),
+        np.mean(centroid),
+        np.std(centroid),
+        np.mean(bandwidth),
+        np.std(bandwidth),
+        np.mean(rolloff),
+        np.std(rolloff)
     ])
 
     return packed_features
