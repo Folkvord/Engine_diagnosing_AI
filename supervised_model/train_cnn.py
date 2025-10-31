@@ -20,7 +20,7 @@ CLASSES  = ("engine1_good", "engine2_broken", "engine3_heavyload")
 # Getting the preprocess pipeline for supervised from util
 from util.preprocessing import supervised_preprocess_pipeline
 
-def set_seed(seed=None):
+def set_seed(seed=None): #if using a random seed
     if seed is None:
         import time
         seed = int(time.time()) % (2**31-1)
@@ -29,7 +29,7 @@ def set_seed(seed=None):
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
     print(f"[INFO] Seed: {seed}")
 
-set_seed(None)  # i stedet for set_seed(42)
+set_seed(42)  
 
 # tries so do cuda first, for nvidia gpu
 def pick_device() -> torch.device:
