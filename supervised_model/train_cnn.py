@@ -12,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 
 """Supervised model written and implented Sofie Emmelin Weber and Edwina Larsen"""
 
-# Globale variables for simplicity 
+# Global variables for simplicity 
 SR       = 16000
 DURATION = 2.0
 N_MELS   = 64
@@ -21,7 +21,7 @@ CLASSES  = ("engine1_good", "engine2_broken", "engine3_heavyload")
 # Getting the preprocess pipeline for supervised from util
 from util.preprocessing import supervised_preprocess_pipeline
 
-def set_seed(seed=None): #if using a random seed
+def set_seed(seed=None): 
     if seed is None:
         import time
         seed = int(time.time()) % (2**31-1)
@@ -29,7 +29,7 @@ def set_seed(seed=None): #if using a random seed
     random.seed(seed); np.random.seed(seed)
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
     print(f"[INFO] Seed: {seed}")
-
+#if using a random seed use set_seed(None)
 set_seed(42)  
 
 # tries so do cuda first, for nvidia gpu
@@ -116,7 +116,6 @@ class EngineDataset(Dataset):
     # and return (x, label) for training
     def __getitem__(self, idx: int):
         path, label = self.items[idx]
-        # 
         y, _ = librosa.load(path, sr=SR, mono=True)
         # fast lengde
         #y = _random_crop_or_pad(y, self.target_len) if self.augment else _center_crop_or_pad(y, self.target_len)
@@ -175,7 +174,7 @@ class SmallCNN(nn.Module):
 # Training/evaluating
 
 def _acc(logits, y): return (logits.argmax(1) == y).float().mean().item()
-# adding no gradient so it doesnt save lots og unnessacery info, reducing
+# adding no gradient so it doesnt save lots of unecassery info, reducing
 # performance
 @torch.no_grad()
 def evaluate(model, loader, device):
@@ -196,7 +195,7 @@ def train(train_root, val_root,
     train_ds = EngineDataset(train_root, split="train", class_names=class_names, augment=True)
     val_ds   = EngineDataset(val_root,   split="val",   class_names=class_names, augment=False)
 
-    # num_workers=0 for stability cross enviormment (Sofie has Mac :D)
+    # num_workers=0 for stability cross enviormment (Sofie has Mac :D) 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
 

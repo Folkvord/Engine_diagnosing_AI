@@ -17,9 +17,9 @@ from supervised_model.train_cnn import SmallCNN
 from util.preprocessing import supervised_preprocess_pipeline
 
 if not callable(supervised_preprocess_pipeline):
-    raise ImportError("Fant ikke supervised_preprocess_pipeline i util/preprocessing.py")
+    raise ImportError("Did not find supervised_preprocess_pipeline in util/preprocessing.py")
 
-# Setting some global variabels for consitancy 
+# Setting some global variables for consistancy 
 SR = 16000
 DURATION = 2.0
 N_MELS = 64
@@ -69,7 +69,7 @@ class EngineDataset(Dataset):
         # same length policy as validation: center crop/pad
         y = _center_crop_or_pad(y, self.target_len)
 
-        # usin the supvervised adapter 
+        # using the supvervised adapter 
         feat = supervised_preprocess_pipeline(y, SR)  
         feat = np.asarray(feat, dtype=np.float32)
 
@@ -105,7 +105,7 @@ def plot_confusion(cm, classes, save_path="confusion_matrix.png",
     # font for the numbers
     num_fp = FontProperties(family=num_font)  
     
-    # 
+    
     parsed = [str(c).split("_")[-1].lower() for c in classes]
     if set(parsed) >= {"good", "broken", "heavyload"}:
         display_labels = ["good", "broken", "heavyload"]
@@ -165,7 +165,8 @@ def test_model(model_path, data_root):
     print(f"[INFO] Classes: {class_names}")
 
     ds = EngineDataset(data_root, class_names)
-    pin = bool(torch.cuda.is_available())  # pin memory only on CUDA
+    # pin memory only on CUDA
+    pin = bool(torch.cuda.is_available())  
     dl = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0, pin_memory=pin)
 
     model = SmallCNN(n_classes=len(class_names)).to(device)
@@ -197,17 +198,18 @@ def test_model(model_path, data_root):
     precision = precision_score(y_true, y_pred, average="macro", zero_division=0)
     recall    = recall_score(y_true, y_pred, average="macro", zero_division=0)
     f1        = f1_score(y_true, y_pred, average="macro", zero_division=0)
-
+    #print metrics
     print(f"[RESULT] Accuracy : {acc*100:.2f}%")
     print(f"[RESULT] Precision: {precision*100:.2f}%")
     print(f"[RESULT] Recall   : {recall*100:.2f}%")
     print(f"[RESULT] F1-score : {f1*100:.2f}%")
-
+    #save confusion matrix png
     out_png = Path(model_path).with_suffix(".confmat.png")
     plot_confusion(cm, class_names, save_path=str(out_png))
 
 if __name__ == "__main__":
     PROJECT   = Path(__file__).resolve().parents[1]
     MODEL     = PROJECT / "engine_cnn_best.pt"
-    TEST_DATA = PROJECT / "data" / "test_cut"   # keep in sync with train
+    # keep in sync with train
+    TEST_DATA = PROJECT / "data" / "test_cut"   
     test_model(MODEL, TEST_DATA)
