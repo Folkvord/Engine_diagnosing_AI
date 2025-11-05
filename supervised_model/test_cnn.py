@@ -209,7 +209,7 @@ def test_model(model_path, data_root):
 
 if __name__ == "__main__":
     PROJECT   = Path(__file__).resolve().parents[1]
-    MODEL     = PROJECT / "engine_cnn_best.pt"
-    # keep in sync with train
+    MODEL     = PROJECT / "engine_cnn_fixed.pt"
+    #in sync with train
     TEST_DATA = PROJECT / "data" / "test_cut"   
     test_model(MODEL, TEST_DATA)
